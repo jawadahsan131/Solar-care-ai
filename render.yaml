@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: solar-care-ai-api
+    runtime: python
+    buildCommand: pip install -r api/requirements.txt
+    startCommand: cd api && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
+      - key: DETECT_BACKEND
+        value: vlm
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        sync: false
+      - key: CATALOG_PATH
+        value: ../data/catalog/appliance_catalog.csv

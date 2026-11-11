@@ -1,0 +1,10 @@
+{
+  "status": "placeholder",
+  "currency": "PKR",
+  "updated_on": null,
+  "slabs": [],
+  "fuel_adjustment_pkr_per_kwh": null,
+  "other_charges_percent": null,
+  "tax_percent": null,
+  "instructions": "Replace with current official tariff slab rates and charges before enabling cost estimates. Placeholder values are intentionally empty."
+}

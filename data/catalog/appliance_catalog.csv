@@ -1,0 +1,45 @@
+type,brand,model,capacity_value,capacity_unit,rated_watts,duty_factor,inverter,surge_factor,default_hours,source,verified,notes
+ac,,,0.75,ton,900,0.55,false,4.0,8,typical,false,Typical non-inverter value; check rating plate
+ac,,,1,ton,1100,0.65,false,4.0,8,typical,false,Typical non-inverter value; check rating plate
+ac,,,1.5,ton,1700,0.65,false,4.0,8,typical,false,Typical non-inverter value; check rating plate
+ac,,,2,ton,2350,0.65,false,4.0,8,typical,false,Typical non-inverter value; check rating plate
+ac,,,3,ton,3500,0.65,false,4.0,8,typical,false,Typical non-inverter value; check rating plate
+ac,,,4,ton,4700,0.65,false,4.0,8,typical,false,Typical non-inverter value; check rating plate
+ac,,,0.75,ton,700,0.55,true,1.8,8,typical,false,Typical inverter maximum input; check rating plate
+ac,,,1,ton,900,0.55,true,1.8,8,typical,false,Typical inverter maximum input; check rating plate
+ac,,,1.5,ton,1350,0.55,true,1.8,8,typical,false,Typical inverter maximum input; check rating plate
+ac,,,2,ton,1950,0.55,true,1.8,8,typical,false,Typical inverter maximum input; check rating plate
+ac,,,3,ton,3000,0.55,true,1.8,8,typical,false,Typical inverter maximum input; check rating plate
+ac,,,4,ton,4000,0.55,true,1.8,8,typical,false,Typical inverter maximum input; check rating plate
+ceiling_fan,,,56,inch,80,1.0,false,1.3,10,typical,false,Typical AC fan; check rating plate
+ceiling_fan,,,48,inch,68,1.0,false,1.3,10,typical,false,Typical AC fan; check rating plate
+ceiling_fan,,,56,inch,35,1.0,true,1.3,10,typical,false,Typical DC fan; check rating plate
+pedestal_fan,,,18,inch,70,1.0,false,1.3,6,typical,false,Check rating plate
+exhaust_fan,,,10,inch,45,1.0,false,1.3,2,typical,false,Check rating plate
+air_cooler,,,50,litre,200,1.0,false,2.0,8,typical,false,Typical room cooler; check rating plate
+refrigerator,,,10,cu_ft,125,0.4,false,3.5,24,typical,false,Compressor running watts; check rating plate
+refrigerator,,,16,cu_ft,165,0.4,false,3.5,24,typical,false,Compressor running watts; check rating plate
+refrigerator,,,22,cu_ft,220,0.4,false,3.5,24,typical,false,Compressor running watts; check rating plate
+refrigerator,,,16,cu_ft,140,0.35,true,1.8,24,typical,false,Typical inverter value; check rating plate
+deep_freezer,,,12,cu_ft,230,0.5,false,4.0,24,typical,false,Check rating plate
+microwave,,,25,litre,1250,1.0,false,1.2,0.3,typical,false,Input power not cooking output; check label
+electric_oven,,,30,litre,1800,0.7,false,1.2,0.5,typical,false,Check rating plate
+water_dispenser,,,1,,525,0.3,false,3.0,24,typical,false,Hot and cold dispenser; check rating plate
+electric_kettle,,,1.7,litre,1850,1.0,false,1.2,0.3,typical,false,Check rating plate
+washing_machine,,,8,kg,400,1.0,false,2.5,1,typical,false,Typical fully automatic; check rating plate
+iron,,,1,,1300,0.7,false,1.0,0.5,typical,false,Check rating plate
+geyser,,,50,litre,2200,0.4,false,1.0,2,typical,false,Electric only; many homes use gas geysers
+water_pump,,,0.5,hp,525,1.0,false,4.0,1,typical,false,Check motor plate and starting surge
+water_pump,,,0.75,hp,750,1.0,false,4.0,1,typical,false,Check motor plate and starting surge
+water_pump,,,1,hp,1025,1.0,false,4.0,1,typical,false,Check motor plate and starting surge
+water_pump,,,1.5,hp,1500,1.0,false,4.0,1,typical,false,Check motor plate and starting surge
+tv,,,43,inch,75,1.0,false,1.0,5,typical,false,Typical LED television; check rating plate
+desktop_pc,,,1,,250,1.0,false,1.5,5,typical,false,Including typical monitor; check components
+laptop,,,1,,65,1.0,false,1.2,6,typical,false,Including charger; check adapter
+router,,,1,,12,1.0,false,1.0,24,typical,false,Check power adapter label
+ups,,,1000,va,90,1.0,false,2.0,24,typical,false,Standby and charging varies; check actual input
+led_bulb,,,12,watt,12,1.0,false,1.0,6,typical,false,Enter bulb wattage as capacity
+tube_light,,,24,watt,24,1.0,false,1.0,6,typical,false,LED tube typical; check rating plate
+phone_charger,,,1,,10,1.0,false,1.0,3,typical,false,Typical charger input; check adapter
+vacuum_cleaner,,,1,,1200,1.0,false,1.5,0.3,typical,false,Check rating plate
+other,,,1,,100,1.0,false,1.0,2,typical,false,Generic value; user must edit
