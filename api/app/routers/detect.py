@@ -10,7 +10,7 @@ from app.config import settings
 from app.db import get_supabase
 from app.deps import AuthenticatedUser, OwnedHome, get_owned_home
 from app.schemas import FinalizeIn
-from app.services.detect import detect
+from app.services.detect import detect_with_backend
 from app.services.detect_vlm import DetectionError, resize_for_detection
 from app.services.image_rate_limit import enforce_image_rate_limit
 
@@ -69,7 +69,9 @@ async def detect_home(
     persisted = False
     try:
         try:
-            items = await run_in_threadpool(detect, image_bytes, mime)
+            items, detection_backend = await run_in_threadpool(
+                detect_with_backend, image_bytes, mime
+            )
         except DetectionError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -81,6 +83,7 @@ async def detect_home(
                     "room": room.strip(),
                     "image_path": image_path if retain_image else None,
                     "backend": settings.detect_backend,
+                    "detector_label": detection_backend,
                     "predicted": [item.model_dump() for item in items],
                 }
             )
@@ -95,6 +98,7 @@ async def detect_home(
             "detection_id": inserted.data[0]["id"],
             "image_path": image_path if retain_image else None,
             "items": [item.model_dump() for item in items],
+            "backend": detection_backend,
         }
     finally:
         if not persisted or not retain_image:

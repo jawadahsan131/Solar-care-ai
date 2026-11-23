@@ -37,19 +37,35 @@ FALLBACKS = {
 }
 
 
-def detect(image_bytes: bytes, mime: str) -> list[DetectedItem]:
+def detect_with_backend(
+    image_bytes: bytes, mime: str
+) -> tuple[list[DetectedItem], str]:
     """Detect appliances in image bytes and apply catalog-backed post-processing."""
     backend = settings.detect_backend.lower()
     if backend == "vlm":
         raw_items = detect_vlm(image_bytes, mime)
+        actual_backend = "vision AI"
     elif backend == "yolo":
         try:
             raw_items = detect_yolo(image_bytes, mime)
         except NotImplementedError as exc:
             raise DetectionError(str(exc)) from exc
+        actual_backend = "our trained model"
+    elif backend == "hybrid":
+        try:
+            raw_items = detect_yolo(image_bytes, mime)
+            actual_backend = "our trained model"
+        except DetectionError:
+            raw_items = detect_vlm(image_bytes, mime)
+            actual_backend = "vision AI"
     else:
-        raise DetectionError("DETECT_BACKEND must be either 'vlm' or 'yolo'")
-    return postprocess(raw_items, get_catalog())
+        raise DetectionError("DETECT_BACKEND must be 'vlm', 'yolo', or 'hybrid'")
+    return postprocess(raw_items, get_catalog()), actual_backend
+
+
+def detect(image_bytes: bytes, mime: str) -> list[DetectedItem]:
+    items, _ = detect_with_backend(image_bytes, mime)
+    return items
 
 
 def postprocess(

@@ -1,0 +1,53 @@
+
+[-----  ] 1. APP BASICS
+[OK     ] api/app/main.py
+[OK     ] web/package.json
+[OK     ] sql/schema.sql
+[OK     ] sql/migrations/002_part2.sql
+[OK     ] API test files: 20
+[WARN   ] catalog rows: 44 (aim for 60+; values are typical, verify on real labels)
+
+[-----  ] 2. MODEL CODE (the ML kit)
+[OK     ] ml/yolo/train.py
+[OK     ] ml/yolo/make_dataset.py
+[OK     ] ml/demand/train_demand.py
+[OK     ] api/app/services/demand_features.py
+[OK     ] api/app/services/demand_ml.py
+[OK     ] api/tests/test_ml_glue.py
+[OK     ] detect_yolo.py is the real implementation
+
+[-----  ] 3. TRAINED MODEL FILES
+[MISSING] models/best.pt  (train it, see README_FIRST)
+[MISSING] models/yolo_classes.json  (train it, see README_FIRST)
+[MISSING] models/demand_model.joblib  (train it, see README_FIRST)
+[MISSING] models/anomaly_model.joblib  (train it, see README_FIRST)
+[MISSING] models/demand_features.json  (train it, see README_FIRST)
+
+[-----  ] 4. INTEGRATION INTO THE APP
+[OK     ] detect backend supports 'hybrid'
+[OK     ] API imports demand_ml (ensemble / anomaly)
+[OK     ] web /about-models page
+
+[-----  ] 5. EVIDENCE DOCS
+[MISSING] docs/yolo_eval.md
+[MISSING] docs/demand_eval.md
+[OK     ] docs/evaluation.md
+[OK     ] README.md
+[OK     ] docs/HANDOFF.md
+
+[-----  ] 6. YOLO DATA (local photos)
+[MISSING] data/yolo_raw (no local photos yet)
+[MISSING] data/yolo/data.yaml  (run make_dataset.py)
+
+[-----  ] 7. SAFETY AND GIT
+[OK     ] api/.env is ignored by git
+[OK     ] web/.env.local is ignored by git
+[OK     ] tracked .env files: none
+[OK     ] possible secrets in tracked files: none found
+[OK     ] .gitignore has a rule covering '.env' files
+[WARN   ] .gitignore has 'models/*.pt'
+[WARN   ] .gitignore has 'data/yolo_raw'
+[WARN   ] .gitignore has 'runs/'
+[INFO   ] uncommitted changes: 19 file(s)
+[INFO   ] last commit: 42a9e98 Merge remote-tracking branch 'origin/main'
+[SUMMARY] OK=23 | MISSING=9 | WARN=4 | ALERT=0

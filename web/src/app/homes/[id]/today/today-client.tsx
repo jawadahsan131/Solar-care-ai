@@ -27,6 +27,8 @@ type Demand = {
   weather_source: string;
   weather_stale: boolean;
   learning_days: number;
+  synthetic?: boolean;
+  model_basis?: "physics model" | "blended with a learned model";
 };
 type Verdict = {
   day: string;
@@ -74,6 +76,8 @@ export default function TodayClient() {
     hour: `${String(hour).padStart(2, "0")}:00`,
     load,
   })) ?? [];
+  const modelBasis = demand?.model_basis
+    ?? (demand?.learning_days && demand.learning_days >= 5 ? "blended with a learned model" : "physics model");
   return (
     <section className="home-content today-content">
       <div className="home-page-heading">
@@ -91,11 +95,13 @@ export default function TodayClient() {
       {errorMessage && <p className="inline-error" role="alert">{errorMessage}</p>}
       {demand && (
         <>
+          {demand.synthetic && <div className="synthetic-badge">SYNTHETIC - not real accuracy</div>}
           <div className="report-stats today-stats">
             <div className="report-stat"><span>Estimated today</span><strong>{demand.total_kwh.toFixed(1)} kWh</strong></div>
             <div className="report-stat"><span>Likely range</span><strong>{demand.low_kwh.toFixed(1)}–{demand.high_kwh.toFixed(1)} kWh</strong></div>
             <div className="report-stat"><span>Learning</span><strong>{demand.learning_days} days · {demand.confidence} confidence</strong></div>
           </div>
+          <p className="muted model-basis">Model basis: {modelBasis}.</p>
           <section className="report-panel today-panel">
             <div className="panel-heading">
               <div><p className="eyebrow">HOURLY LOAD</p><h2>Estimated grid energy by hour</h2></div>

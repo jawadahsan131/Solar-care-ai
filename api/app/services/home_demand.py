@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
@@ -8,6 +10,7 @@ from fastapi import HTTPException
 from app.db import get_supabase
 from app.services.calibration import estimate_monthly_kwh, overall_calibration_ratio
 from app.services.demand import predict_demand
+from app.services import demand_ml
 from app.services.part2_config import MIN_DAYS_FOR_PERSONAL_FIT
 from app.services.solar import cdh, hdh
 from app.services.weather import get_weather_days
@@ -20,6 +23,17 @@ def neutral_weather() -> dict[str, list[float]]:
         "cloud_pct": [50.0] * 24,
         "ghi_wm2": [0.0] * 24,
     }
+
+
+def demand_metadata() -> dict[str, Any]:
+    path = Path(__file__).resolve().parents[2] / "models" / "demand_features.json"
+    if not path.exists():
+        return {"synthetic": False}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"synthetic": False}
+    return payload if isinstance(payload, dict) else {"synthetic": False}
 
 
 async def weather_for_home(home: dict[str, Any], day: date) -> dict[str, Any]:
@@ -159,6 +173,20 @@ async def predict_home_demand(
         if model
         else None,
     )
+    meta = demand_metadata()
+    prediction = demand_ml.predict_with_ml(
+        prediction,
+        appliances,
+        weather["hourly"],
+        context={
+            "ac_hours": context.get("ac_hours"),
+            "outage_hours": context.get("outage_hours"),
+            "guests": context.get("guests"),
+            "appliance_hours": context.get("appliance_hours") or {},
+        },
+        n_days=n_days,
+        residual_std=(model.get("metrics") or {}).get("residual_std") if model else None,
+    )
     return {
         "day": target_day.isoformat(),
         **prediction,
@@ -166,4 +194,5 @@ async def predict_home_demand(
         "weather_stale": weather["stale"],
         "normal_city": weather["normal_city"],
         "learning_days": n_days,
+        "synthetic": bool(meta.get("synthetic")),
     }

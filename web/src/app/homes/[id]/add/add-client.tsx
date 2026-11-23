@@ -46,6 +46,11 @@ export default function AddAppliancesPage() {
   const [retainPhoto, setRetainPhoto] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState("");
+  const [detectionBackendLabel, setDetectionBackendLabel] = useState(
+    (process.env.NEXT_PUBLIC_DETECT_BACKEND ?? "vlm") === "yolo"
+      ? "our trained model"
+      : "vision AI",
+  );
 
   async function handlePhoto(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,7 +83,9 @@ export default function AddAppliancesPage() {
         detection_id: string;
         image_path: string | null;
         items: DetectedItem[];
+        backend: "our trained model" | "vision AI";
       }>(`/homes/${id}/detect`, { method: "POST", body });
+      setDetectionBackendLabel(result.backend);
       setDetectionId(result.detection_id);
       setReviewItems(
         result.items.map((item) => ({
@@ -237,7 +244,7 @@ export default function AddAppliancesPage() {
                 <p className="eyebrow">YOUR REVIEW</p>
                 <h3>{reviewItems.length} possible {reviewItems.length === 1 ? "appliance" : "appliances"}</h3>
               </div>
-              <span className="review-help">Untick anything that does not belong.</span>
+              <span className="review-help">Detected by {detectionBackendLabel}. Untick anything that does not belong.</span>
             </div>
             <div className="review-list">
               {reviewItems.map((item, index) => (

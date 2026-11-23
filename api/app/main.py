@@ -17,6 +17,7 @@ from app.routers import (
     detect,
     forecast,
     homes,
+    models,
     recommendations,
     sizing,
     whatif,
@@ -127,6 +128,7 @@ app.include_router(checkin.router)
 app.include_router(recommendations.router)
 app.include_router(catalog.router)
 app.include_router(detect.router)
+app.include_router(models.router)
 app.include_router(sizing.router)
 app.include_router(whatif.router)
 

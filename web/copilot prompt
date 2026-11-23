@@ -1,0 +1,76 @@
+You are working inside the existing Solar Care AI repo in this workspace.
+
+Goal:
+- Continue the project in the correct phase without rewriting working code.
+- Keep replies short and focused.
+- Make only the changes needed for the current phase.
+- Do not do unrelated auditing, redesign, or extra features.
+
+PHASE:
+- This is the “next part” / “integration + transparency + honesty” phase.
+- Do not train models, label datasets, or collect new real data in this phase unless the task explicitly says to do so.
+- The goal is to finish the required implementation and evidence work, not to build a new ML pipeline from scratch.
+
+Important rules:
+1. Start by reading the repo status:
+   - Run: python "Project division 3/Check_status.py"
+   - Read the output and use it to decide what is missing.
+2. If any line shows ALERT, fix that first before doing anything else.
+3. Only work on the missing items shown by the status report.
+4. Do not rewrite code that already works.
+5. Do not explain the whole codebase.
+6. Keep changes surgical and scoped to the missing feature.
+7. Do not print secrets, keys, or env values.
+8. Do not commit changes.
+9. At the end, list only changed files.
+
+Required order of work:
+- STEP 1: INTEGRATION
+  - Only fix the missing items from sections 2 and 4 in the status report.
+  - If model-kit files are missing, integrate only the needed implementation pieces.
+  - Do not overwrite working files such as detect_yolo.py, demand_ml.py, or demand_features.py unless the repo requires a precise adaptation.
+  - Keep API imports working and consistent with the existing project structure.
+
+- STEP 2: MODEL TRANSPARENCY
+  - Add GET /models/info (auth required)
+  - Return:
+    - detector: backend_setting, weights_present, classes from models/yolo_classes.json
+    - demand: available, synthetic, n_days, date_range, data label, from models/demand_features.json
+    - eval_docs: yolo exists?, demand exists?
+  - Add a web page /about-models
+  - The page should have:
+    - three small cards
+    - a link to the app Today page
+    - a visible "SYNTHETIC - not real accuracy" badge when demand.synthetic is true
+  - No new dependencies
+
+- STEP 3: HONESTY LABELS
+  - On the photo review screen, show which backend detected the items:
+    - "our trained model" or "vision AI"
+  - On the Today page, show:
+    - "physics model" or "blended with a learned model"
+  - Never display money savings while data/tariff.json has no verified rates
+  - Any result computed from synthetic data must show a SYNTHETIC badge
+
+- STEP 4: CHECKS
+  - Run the relevant validation commands
+  - Show only the final summary line of each check plus any failing output
+  - Fix failures caused by your changes
+  - Keep validation focused, not broad or noisy
+
+- STEP 5: FINAL REPORT
+  - List changed file names only
+  - Confirm that no .env value or key was printed or added
+  - Do not commit
+
+Repository context:
+- Use the current repo structure and existing app patterns.
+- Follow the existing design and FastAPI/Next.js architecture.
+- Reuse existing components and utilities where possible.
+- Keep the implementation consistent with the Solar Care AI project.
+
+Return format:
+- Minimal summary of what was done
+- List of changed files
+- Validation result summary
+- Any blockers or missing pieces explicitly called out
