@@ -26,7 +26,7 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isProtected = /^\/(dashboard|homes)(\/|$)/.test(request.nextUrl.pathname);
+  const isProtected = /^\/(dashboard|homes|chatbot)(\/|$)/.test(request.nextUrl.pathname);
   if (isProtected && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";

@@ -14,7 +14,9 @@ from app.routers import (
     bills,
     catalog,
     checkin,
+    chat,
     detect,
+    fault,
     forecast,
     homes,
     models,
@@ -125,6 +127,8 @@ app.include_router(appliances.router)
 app.include_router(bills.router)
 app.include_router(forecast.router)
 app.include_router(checkin.router)
+app.include_router(chat.router)
+app.include_router(fault.router)
 app.include_router(recommendations.router)
 app.include_router(catalog.router)
 app.include_router(detect.router)

@@ -8,4 +8,9 @@
 **/.next/
 **/dist/
 **/build/
+api/.cache/
 *.py[cod]
+
+# Machine Learning Artifacts
+api/app/services/models/*.joblib
+ml/datasets/*.csv

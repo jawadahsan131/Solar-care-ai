@@ -14,6 +14,9 @@ const tabs = [
   { path: "/dashboard", label: "Dashboard", icon: "▦" },
   { path: "/whatif", label: "What-if", icon: "◇" },
   { path: "/report", label: "Report", icon: "↗" },
+  { path: "/chatbot", label: "Help / Ask", icon: "?" },
+  { path: "/fault-detection", label: "Fault Detection", icon: "⚡" },
+  { path: "/weather-impact", label: "Weather", icon: "☁" },
 ];
 
 export default function HomeTabs() {
@@ -23,9 +26,20 @@ export default function HomeTabs() {
   return (
     <nav className="home-tabs" aria-label="Home sections">
       {tabs.map((tab) => {
-        const href = `/homes/${id}${tab.path}`;
+        const isGlobal =
+          tab.path === "/chatbot" ||
+          tab.path === "/fault-detection" ||
+          tab.path === "/weather-impact";
+        const href =
+          tab.path === "/weather-impact"
+            ? `${tab.path}?home_id=${encodeURIComponent(id)}`
+            : isGlobal
+              ? tab.path
+              : `/homes/${id}${tab.path}`;
         const active =
-          tab.path === ""
+          isGlobal
+            ? pathname === tab.path
+            : tab.path === ""
             ? pathname === `/homes/${id}`
             : pathname.startsWith(href);
         return (

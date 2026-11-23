@@ -9,3 +9,8 @@ pillow
 rapidfuzz
 google-genai
 pytest
+sentence-transformers
+faiss-cpu
+pandas
+scikit-learn
+joblib
