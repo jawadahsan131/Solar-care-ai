@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import type { DragEvent, FormEvent } from "react";
 
 import SourceBadge from "@/components/source-badge";
 import { apiFetch } from "@/lib/api";
@@ -35,12 +34,55 @@ type ReviewItem = DetectedItem & {
   source_tag: SourceTag;
 };
 
-export default function AddAppliancesPage() {
-  const { id } = useParams<{ id: string }>();
+// The API only accepts label, catalog, guess, and user source tags.
+const DEMO_ITEMS: DetectedItem[] = [
+  {
+    type: "ac",
+    brand: null,
+    model: null,
+    capacity_value: 1.5,
+    capacity_unit: "ton",
+    inverter: true,
+    count: 1,
+    watts: 1500,
+    duty_factor: 0.7,
+    surge_factor: 1.2,
+    default_hours: 6,
+    confidence: 0.5,
+    source_tag: "guess",
+    label_text: "1.5 Ton Inverter AC",
+    notes: "Demo detection sample. Confirm the estimate before adding.",
+  },
+  {
+    type: "ceiling_fan",
+    brand: null,
+    model: null,
+    capacity_value: 56,
+    capacity_unit: "inch",
+    inverter: null,
+    count: 1,
+    watts: 75,
+    duty_factor: 1,
+    surge_factor: 1.3,
+    default_hours: 8,
+    confidence: 0.5,
+    source_tag: "guess",
+    label_text: "56-inch Ceiling Fan",
+    notes: "Demo detection sample. Confirm the estimate before adding.",
+  },
+];
+
+export default function AddAppliancesPage({ homeId }: { homeId: string }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [room, setRoom] = useState("Living room");
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [detectionId, setDetectionId] = useState("");
   const [detecting, setDetecting] = useState(false);
+  const [usingDemo, setUsingDemo] = useState(false);
+  const [addingReviewed, setAddingReviewed] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [editingItems, setEditingItems] = useState<number[]>([]);
   const [consent, setConsent] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [retainPhoto, setRetainPhoto] = useState(false);
@@ -52,11 +94,34 @@ export default function AddAppliancesPage() {
       : "vision AI",
   );
 
-  async function handlePhoto(event: FormEvent<HTMLFormElement>) {
+  function applyDetectionItems(items: DetectedItem[]) {
+    setReviewItems(
+      items.map((item) => ({
+        ...item,
+        selected: true,
+        watts: item.watts ?? 100,
+        default_hours: item.default_hours ?? 2,
+        source_tag: item.source_tag,
+      })),
+    );
+    setEditingItems([]);
+  }
+
+  function chooseFile(file: File | undefined) {
+    if (!file) return;
+    setSelectedFile(file);
+    setErrorMessage("");
+    setNotice("");
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
-    const fileInput = formElement.elements.namedItem("image");
-    const file = fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
+    setIsDragging(false);
+    chooseFile(event.dataTransfer.files[0]);
+  }
+
+  async function handlePhoto() {
+    const file = selectedFile;
     if (!file) {
       setErrorMessage("Choose a photo first.");
       return;
@@ -67,8 +132,13 @@ export default function AddAppliancesPage() {
     }
 
     setDetecting(true);
+    setUsingDemo(false);
     setErrorMessage("");
     setNotice("");
+    setReviewItems([]);
+    setDetectionId("");
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     if (!consentAccepted) {
       localStorage.setItem("solar-photo-consent", "accepted");
       setConsentAccepted(true);
@@ -84,27 +154,35 @@ export default function AddAppliancesPage() {
         image_path: string | null;
         items: DetectedItem[];
         backend: "our trained model" | "vision AI";
-      }>(`/homes/${id}/detect`, { method: "POST", body });
+      }>(`/homes/${homeId}/detect`, { method: "POST", body });
       setDetectionBackendLabel(result.backend);
       setDetectionId(result.detection_id);
-      setReviewItems(
-        result.items.map((item) => ({
-          ...item,
-          selected: true,
-          watts: item.watts ?? 100,
-          default_hours: item.default_hours ?? 2,
-          source_tag: item.source_tag,
-        })),
-      );
+      applyDetectionItems(result.items);
       if (!result.items.length) setNotice("No appliances found. Add one manually below.");
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Detection failed. You can add appliances manually.",
-      );
+    } catch {
+      setDetectionBackendLabel("demo photo");
+      applyDetectionItems(DEMO_ITEMS);
+      setNotice("Live AI unavailable. Showing simulated result.");
     } finally {
       setDetecting(false);
-      formElement.reset();
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  async function runDemoPhoto() {
+    if (detecting) return;
+    setDetecting(true);
+    setUsingDemo(true);
+    setErrorMessage("");
+    setNotice("");
+    setReviewItems([]);
+    setDetectionId("");
+    await new Promise((resolve) => window.setTimeout(resolve, 900));
+    setDetectionBackendLabel("demo photo");
+    applyDetectionItems(DEMO_ITEMS);
+    setNotice("Demo photo analyzed. Review the sample estimates before adding them.");
+    setDetecting(false);
   }
 
   function updateReview(index: number, patch: Partial<ReviewItem>) {
@@ -119,14 +197,16 @@ export default function AddAppliancesPage() {
   }
 
   async function addReviewedItems() {
+    if (addingReviewed) return;
     const chosen = reviewItems.filter((item) => item.selected);
     if (!chosen.length) {
       setErrorMessage("Select at least one appliance to add.");
       return;
     }
     setErrorMessage("");
+    setAddingReviewed(true);
     try {
-      await apiFetch(`/homes/${id}/appliances/bulk`, {
+      await apiFetch(`/homes/${homeId}/appliances/bulk`, {
         method: "POST",
         body: JSON.stringify({
           items: chosen.map((item) => ({
@@ -151,35 +231,39 @@ export default function AddAppliancesPage() {
       });
       setReviewItems([]);
       setNotice(`${chosen.length} appliance ${chosen.length === 1 ? "was" : "were"} added.`);
-      try {
-        await apiFetch(`/detections/${detectionId}/finalize`, {
-          method: "POST",
-          body: JSON.stringify({
-            final_items: chosen.map((item) => ({
-              type: item.type,
-              brand: item.brand,
-              model: item.model,
-              capacity_value: item.capacity_value,
-              capacity_unit: item.capacity_unit,
-              inverter: item.inverter,
-              count: item.count,
-              watts: item.watts,
-              duty_factor: item.duty_factor,
-              surge_factor: item.surge_factor,
-              default_hours: item.default_hours,
-              confidence: item.confidence,
-              source_tag: item.source_tag,
-              label_text: item.label_text,
-              bbox: item.bbox,
-              notes: item.notes,
-            })),
-          }),
-        });
-      } catch {
-        setNotice("Appliances were added, but the correction could not be saved for review.");
+      if (detectionId) {
+        try {
+          await apiFetch(`/detections/${detectionId}/finalize`, {
+            method: "POST",
+            body: JSON.stringify({
+              final_items: chosen.map((item) => ({
+                type: item.type,
+                brand: item.brand,
+                model: item.model,
+                capacity_value: item.capacity_value,
+                capacity_unit: item.capacity_unit,
+                inverter: item.inverter,
+                count: item.count,
+                watts: item.watts,
+                duty_factor: item.duty_factor,
+                surge_factor: item.surge_factor,
+                default_hours: item.default_hours,
+                confidence: item.confidence,
+                source_tag: item.source_tag,
+                label_text: item.label_text,
+                bbox: item.bbox,
+                notes: item.notes,
+              })),
+            }),
+          });
+        } catch {
+          setNotice("Appliances were added, but the correction could not be saved for review.");
+        }
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Could not add these appliances.");
+    } finally {
+      setAddingReviewed(false);
     }
   }
 
@@ -191,7 +275,7 @@ export default function AddAppliancesPage() {
           <h1>Add appliances</h1>
           <p className="muted">Use a photo or add details yourself. Review every estimate.</p>
         </div>
-        <Link className="button button-quiet" href={`/homes/${id}`}>View list</Link>
+        <Link className="button button-quiet" href={`/homes/${homeId}`}>View list</Link>
       </div>
       {errorMessage && <p className="inline-error" role="alert">{errorMessage}</p>}
       {notice && <p className="inline-notice" role="status">{notice}</p>}
@@ -204,19 +288,85 @@ export default function AddAppliancesPage() {
           </div>
           <span className="option-chip">Review before adding</span>
         </div>
-        <form className="photo-form" onSubmit={handlePhoto}>
+        <form
+          className="photo-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handlePhoto();
+          }}
+        >
           <label>
             Room
             <select onChange={(event) => setRoom(event.target.value)} value={room}>
               {ROOMS.map((option) => <option key={option}>{option}</option>)}
             </select>
           </label>
-          <label className="file-drop">
-            <span className="file-drop-icon" aria-hidden="true">⌁</span>
-            <strong>Choose or take a photo</strong>
-            <small>JPEG, PNG, or WebP · up to 8 MB</small>
-            <input accept="image/*" capture="environment" name="image" type="file" />
-          </label>
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div
+              aria-label="Upload an appliance photo"
+              className={`flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center transition ${
+                isDragging
+                  ? "border-emerald-500 bg-emerald-50"
+                  : "border-[var(--line)] bg-white hover:border-emerald-500 hover:bg-emerald-50/50"
+              }`}
+              onClick={() => fileInputRef.current?.click()}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleDrop}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                <svg aria-hidden="true" fill="none" height="28" viewBox="0 0 24 24" width="28">
+                  <path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+                  <circle cx="12" cy="13" r="3.25" stroke="currentColor" strokeWidth="1.7" />
+                </svg>
+              </span>
+              <strong className="text-base font-bold text-[var(--ink)]">
+                Drag &amp; drop a photo of your appliance here, or click to browse.
+              </strong>
+              <small className="mt-2 text-sm text-[var(--muted)]">
+                {selectedFile ? selectedFile.name : "JPEG, PNG, or WebP · up to 8 MB"}
+              </small>
+            </div>
+            <input
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              name="image"
+              onChange={(event) => chooseFile(event.target.files?.[0])}
+              ref={fileInputRef}
+              type="file"
+            />
+            <div className="flex flex-col justify-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5">
+              <span aria-hidden="true" className="text-2xl">✨</span>
+              <strong className="text-sm font-bold text-[var(--ink)]">Ready for a live demo?</strong>
+              <p className="text-sm leading-5 text-[var(--muted)]">
+                Try the sample photo flow without relying on an AI service.
+              </p>
+              <button
+                className="button button-quiet w-full"
+                disabled={detecting}
+                onClick={() => void runDemoPhoto()}
+                type="button"
+              >
+                Use Demo Photo
+              </button>
+            </div>
+          </div>
 
           {!consentAccepted && (
             <label className="privacy-check">
@@ -232,72 +382,147 @@ export default function AddAppliancesPage() {
             <input checked={retainPhoto} onChange={(event) => setRetainPhoto(event.target.checked)} type="checkbox" />
             <span>Keep a private copy of this photo with my home. Otherwise it is deleted after analysis.</span>
           </label>
-          <button className="button button-primary" disabled={detecting}>
+          <button className="button button-primary" disabled={detecting || !selectedFile}>
             {detecting ? "Looking for appliances…" : "Analyze photo"}
           </button>
         </form>
 
+        {detecting && (
+          <div
+            aria-live="polite"
+            className="my-5 flex animate-pulse items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-5 text-emerald-950"
+            role="status"
+          >
+            <span className="h-8 w-8 shrink-0 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-700" />
+            <span>
+              <strong className="block text-base font-bold">
+                {usingDemo ? "Preparing demo appliance results..." : "Gemini AI is analyzing your image..."}
+              </strong>
+              <small className="mt-1 block text-sm text-emerald-800">
+                {usingDemo
+                  ? "Demo mode is active; no image or API request is needed."
+                  : "Identifying appliances and estimating their details."}
+              </small>
+            </span>
+          </div>
+        )}
+
         {reviewItems.length > 0 && (
-          <div className="review-section">
-            <div className="review-heading">
+          <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-4 shadow-sm sm:p-6">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="eyebrow">YOUR REVIEW</p>
-                <h3>{reviewItems.length} possible {reviewItems.length === 1 ? "appliance" : "appliances"}</h3>
+                <h3 className="mt-1 text-xl font-bold tracking-tight text-[var(--ink)]">
+                  {reviewItems.length} possible {reviewItems.length === 1 ? "appliance" : "appliances"}
+                </h3>
               </div>
-              <span className="review-help">Detected by {detectionBackendLabel}. Untick anything that does not belong.</span>
+              <span className="text-sm text-[var(--muted)]">
+                Detected by {detectionBackendLabel}. Review every estimate before adding.
+              </span>
             </div>
-            <div className="review-list">
+            <div className="grid gap-4">
               {reviewItems.map((item, index) => (
-                <article className={`review-card${item.source_tag === "guess" ? " review-guess" : ""}`} key={`${item.type}-${index}`}>
-                  <label className="review-select">
-                    <input
-                      checked={item.selected}
-                      onChange={(event) => updateReview(index, { selected: event.target.checked })}
-                      type="checkbox"
-                    />
-                    <span>Looks right</span>
-                  </label>
-                  <div className="review-card-title">
-                    <strong>{item.type.replaceAll("_", " ")}</strong>
-                    <SourceBadge source={item.source_tag} confidence={item.confidence} />
+                <article
+                  className={`rounded-2xl border p-4 sm:p-5 ${
+                    item.selected ? "border-[var(--line)] bg-white" : "border-slate-200 bg-slate-50 opacity-70"
+                  }`}
+                  key={`${item.type}-${index}`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <label className="mt-1 flex items-center" aria-label="Include this appliance">
+                        <input
+                          checked={item.selected}
+                          className="h-4 w-4 accent-emerald-700"
+                          onChange={(event) => updateReview(index, { selected: event.target.checked })}
+                          type="checkbox"
+                        />
+                      </label>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="text-base font-bold capitalize text-[var(--ink)]">
+                            {item.label_text || item.type.replaceAll("_", " ")}
+                          </h4>
+                          <SourceBadge source={item.source_tag} confidence={item.confidence} />
+                        </div>
+                        <p className="mt-1 text-sm text-[var(--muted)]">
+                          Appliance type: {item.type.replaceAll("_", " ")} · {item.brand ? `Brand: ${item.brand}` : "Brand not detected"}
+                        </p>
+                        <p className="mt-1 text-sm text-[var(--muted)]">
+                          Estimated watts: {item.watts} W · Quantity: {item.count}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      className="button button-quiet min-h-9 px-3 text-sm"
+                      onClick={() => setEditingItems((items) =>
+                        items.includes(index) ? items.filter((itemIndex) => itemIndex !== index) : [...items, index],
+                      )}
+                      type="button"
+                    >
+                      {editingItems.includes(index) ? "Done editing" : "Edit"}
+                    </button>
                   </div>
-                  <div className="review-fields">
-                    <label>Appliance type
-                      <select
-                        onChange={(event) => updateReview(index, { type: event.target.value as ApplianceType })}
-                        value={item.type}
-                      >
-                        {APPLIANCE_TYPES.map((type) => (
-                          <option key={type} value={type}>{type.replaceAll("_", " ")}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>Brand<input onChange={(event) => updateReview(index, { brand: event.target.value || null })} value={item.brand ?? ""} /></label>
-                    <label>Model<input onChange={(event) => updateReview(index, { model: event.target.value || null })} value={item.model ?? ""} /></label>
-                    <label>Capacity<input max={100000} min={0} onChange={(event) => updateReview(index, { capacity_value: event.target.value ? Number(event.target.value) : null })} step="any" type="number" value={item.capacity_value ?? ""} /></label>
-                    <label>Capacity unit<input onChange={(event) => updateReview(index, { capacity_unit: event.target.value || null })} placeholder="ton, litre, inch…" value={item.capacity_unit ?? ""} /></label>
-                    <label>Inverter
-                      <select
-                        onChange={(event) => updateReview(index, {
-                          inverter: event.target.value === "unknown" ? null : event.target.value === "yes",
-                        })}
-                        value={item.inverter === null ? "unknown" : item.inverter ? "yes" : "no"}
-                      >
-                        <option value="unknown">Unknown / check</option>
-                        <option value="yes">Yes</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
-                    <label>Watts<input max={20000} min={0} onChange={(event) => updateReview(index, { watts: Number(event.target.value) })} type="number" value={item.watts} /></label>
-                    <label>Quantity<input max={50} min={1} onChange={(event) => updateReview(index, { count: Number(event.target.value) })} type="number" value={item.count} /></label>
-                    <label>Hours / day<input max={24} min={0} onChange={(event) => updateReview(index, { default_hours: Number(event.target.value) })} step={0.5} type="number" value={item.default_hours} /></label>
-                  </div>
-                  {item.notes && <p className="review-note">{item.notes}</p>}
+                  {editingItems.includes(index) && (
+                    <div className="mt-5 grid gap-4 border-t border-[var(--line)] pt-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <label className="grid gap-1.5 text-sm font-semibold text-[var(--ink)]">Appliance type
+                        <select
+                          className="min-h-10 rounded-lg border border-[var(--line)] bg-white px-3 font-normal"
+                          onChange={(event) => updateReview(index, { type: event.target.value as ApplianceType })}
+                          value={item.type}
+                        >
+                          {APPLIANCE_TYPES.map((type) => (
+                            <option key={type} value={type}>{type.replaceAll("_", " ")}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-1.5 text-sm font-semibold text-[var(--ink)]">Brand
+                        <input className="min-h-10 rounded-lg border border-[var(--line)] bg-white px-3 font-normal" onChange={(event) => updateReview(index, { brand: event.target.value || null })} value={item.brand ?? ""} />
+                      </label>
+                      <label className="grid gap-1.5 text-sm font-semibold text-[var(--ink)]">Model
+                        <input className="min-h-10 rounded-lg border border-[var(--line)] bg-white px-3 font-normal" onChange={(event) => updateReview(index, { model: event.target.value || null })} value={item.model ?? ""} />
+                      </label>
+                      <label className="grid gap-1.5 text-sm font-semibold text-[var(--ink)]">Capacity
+                        <input className="min-h-10 rounded-lg border border-[var(--line)] bg-white px-3 font-normal" max={100000} min={0} onChange={(event) => updateReview(index, { capacity_value: event.target.value ? Number(event.target.value) : null })} step="any" type="number" value={item.capacity_value ?? ""} />
+                      </label>
+                      <label className="grid gap-1.5 text-sm font-semibold text-[var(--ink)]">Capacity unit
+                        <input className="min-h-10 rounded-lg border border-[var(--line)] bg-white px-3 font-normal" onChange={(event) => updateReview(index, { capacity_unit: event.target.value || null })} placeholder="ton, litre, inch…" value={item.capacity_unit ?? ""} />
+                      </label>
+                      <label className="grid gap-1.5 text-sm font-semibold text-[var(--ink)]">Inverter
+                        <select
+                          className="min-h-10 rounded-lg border border-[var(--line)] bg-white px-3 font-normal"
+                          onChange={(event) => updateReview(index, {
+                            inverter: event.target.value === "unknown" ? null : event.target.value === "yes",
+                          })}
+                          value={item.inverter === null ? "unknown" : item.inverter ? "yes" : "no"}
+                        >
+                          <option value="unknown">Unknown / check</option>
+                          <option value="yes">Yes</option>
+                          <option value="no">No</option>
+                        </select>
+                      </label>
+                      <label className="grid gap-1.5 text-sm font-semibold text-[var(--ink)]">Estimated watts
+                        <input className="min-h-10 rounded-lg border border-[var(--line)] bg-white px-3 font-normal" max={20000} min={0} onChange={(event) => updateReview(index, { watts: Number(event.target.value) })} type="number" value={item.watts} />
+                      </label>
+                      <label className="grid gap-1.5 text-sm font-semibold text-[var(--ink)]">Quantity
+                        <input className="min-h-10 rounded-lg border border-[var(--line)] bg-white px-3 font-normal" max={50} min={1} onChange={(event) => updateReview(index, { count: Number(event.target.value) })} type="number" value={item.count} />
+                      </label>
+                      <label className="grid gap-1.5 text-sm font-semibold text-[var(--ink)]">Hours / day
+                        <input className="min-h-10 rounded-lg border border-[var(--line)] bg-white px-3 font-normal" max={24} min={0} onChange={(event) => updateReview(index, { default_hours: Number(event.target.value) })} step={0.5} type="number" value={item.default_hours} />
+                      </label>
+                    </div>
+                  )}
+                  {item.notes && <p className="mt-3 text-sm text-[var(--muted)]">{item.notes}</p>}
                 </article>
               ))}
             </div>
-            <button className="button button-primary" onClick={() => void addReviewedItems()}>
-              Add selected appliances
+            <button
+              className="button button-primary mt-5 min-h-12 w-full sm:w-auto"
+              disabled={addingReviewed}
+              onClick={() => void addReviewedItems()}
+              type="button"
+            >
+              {addingReviewed ? "Adding to inventory…" : "Confirm & Add to Inventory"}
             </button>
           </div>
         )}
@@ -312,13 +537,13 @@ export default function AddAppliancesPage() {
           <span className="option-chip">No photo needed</span>
         </div>
         <ManualApplianceForm
-          homeId={id}
+          homeId={homeId}
           onAdded={(name) => setNotice(`${name} added to your home.`)}
           room={room}
           setError={setErrorMessage}
         />
         <QuickCounters
-          homeId={id}
+          homeId={homeId}
           onAdded={(count) => setNotice(`${count} quick-count appliance types added.`)}
           room={room}
           setError={setErrorMessage}
