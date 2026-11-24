@@ -70,6 +70,8 @@ def detect_vlm(image_bytes: bytes, mime: str) -> list[dict[str, Any]]:
         "tube_light, phone_charger, vacuum_cleaner, other. Only report brand, model, "
         "capacity, inverter status, or power if readable in the image. Never guess "
         "brand or wattage; use null when unreadable. Copy visible label text exactly. "
+        "If you include bbox, use [x_min, y_min, x_max, y_max] normalized to the "
+        "image dimensions with each coordinate between 0 and 1; otherwise use null. "
         "Combine clearly identical visible units into one item with a count. Ignore "
         "people, furniture, and non-electrical objects. Use other when type is "
         "uncertain and explain in notes. Confidence must honestly reflect certainty."

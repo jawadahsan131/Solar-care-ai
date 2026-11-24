@@ -10,12 +10,19 @@ export default async function AddAppliancesPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  if (!UUID_PATTERN.test(id)) redirect("/dashboard");
-
   return (
     <Suspense fallback={<div className="loading-panel">Loading appliance tools…</div>}>
-      <AddAppliancesClient homeId={id} />
+      <AddAppliancesPageContent params={params} />
     </Suspense>
   );
+}
+
+async function AddAppliancesPageContent({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  if (!UUID_PATTERN.test(id)) redirect("/dashboard");
+  return <AddAppliancesClient homeId={id} />;
 }

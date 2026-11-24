@@ -140,7 +140,7 @@ def postprocess(
             confidence=confidence,
             source_tag=source_tag,
             label_text=raw.get("label_text"),
-            bbox=raw.get("bbox"),
+            bbox=normalized_bbox(raw.get("bbox")),
             notes=notes,
         )
         key = (
@@ -160,6 +160,18 @@ def postprocess(
         else:
             merged[key] = item
     return sorted(merged.values(), key=lambda item: item.confidence, reverse=True)
+
+
+def normalized_bbox(value: Any) -> list[float] | None:
+    if not isinstance(value, list) or len(value) != 4:
+        return None
+    try:
+        coordinates = [float(coordinate) for coordinate in value]
+    except (TypeError, ValueError):
+        return None
+    if any(coordinate < 0 or coordinate > 1 for coordinate in coordinates):
+        return None
+    return coordinates
 
 
 def parse_capacity(value: str | None) -> tuple[float | None, str | None]:

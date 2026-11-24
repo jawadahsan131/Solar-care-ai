@@ -58,6 +58,23 @@ def test_unknown_types_are_normalized_and_duplicate_items_merged() -> None:
     assert items[0].count == 3
 
 
+def test_postprocess_discards_pixel_bbox_and_keeps_normalized_bbox() -> None:
+    items = postprocess(
+        [
+            {"type": "ac", "confidence": 0.5, "bbox": [378, 55, 584, 253]},
+            {
+                "type": "ceiling_fan",
+                "confidence": 0.5,
+                "bbox": [0.1, 0.2, 0.8, 0.9],
+            },
+        ],
+        CATALOG,
+    )
+    by_type = {item.type: item for item in items}
+    assert by_type["ac"].bbox is None
+    assert by_type["ceiling_fan"].bbox == [0.1, 0.2, 0.8, 0.9]
+
+
 def test_catalog_capacity_tolerance_is_ten_percent() -> None:
     row, level = match(CATALOG, "ac", None, None, 1.6, "ton", False)
     assert row is not None
